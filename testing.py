@@ -5,7 +5,7 @@ import os
 #Load .env variables
 load_dotenv()
 sessionID = os.getenv("sessionID")
-USERNAME = os.getenv("username")
+USERNAME = os.getenv("SCRATCH_USERNAME")
 
 session = sa.login_by_id(sessionID, username= USERNAME)
 print("Logged in as " + USERNAME)
