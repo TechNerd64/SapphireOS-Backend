@@ -7,7 +7,10 @@ import time
 # Setup SQLite database
 def get_db_connection():
     conn = sqlite3.connect(':memory:', check_same_thread=False)  # Use ':memory:' for an in-memory database
+       # CRITICAL FIX 1: Set row_factory so results can be accessed like dictionaries (e.g., row['user_data'])
+    conn.row_factory = sqlite3.Row
     return conn
+
 
 def initialize_db(conn):
     sql_create_table = """
@@ -45,6 +48,39 @@ except Exception as e:
 
 # Cloud Request Handlers
 client = cloud.requests()
+
+# ==DATABASE FUNCTIONS==
+@client.request
+def register_user(username, user_data):
+    print(f"--> Recieved registation request for user: '{username}'")
+    try:
+        cursor = db_conn.cursor()
+        cursor.execute("INSERT INTO users (username, user_data) VALUES (?, ?)", (username, user_data)) # "?" is to prevent SQL injection attacks
+        db_conn.commit()
+        print(f"    User '{username}' registered succesfully")
+        return "REGISTRATION_SUCCESS"
+    except sqlite3.IntegrityError:
+        # Occurs if username already exists
+        print(f"    An unexpected server error occured: {e}")
+        return "ERROR_SERVER_FAILURE"
+
+@client.request
+def login_user(username):
+    print(f"--> Recieved login request for user: '{username}'")
+    try: 
+        cursor = db_conn.cursor()
+        cursor.execute("SELECT user_data FROM users WHERE username = ?", (username))
+
+        user_row = cursor.fetchone()
+        if user_row:
+            user_data = user_row['user_data']
+            print(f"    User '{username}' found. Returning data.")
+            return user_data # Return data for successful login
+        else: print(f"  An unexpected server error occured: {e}")
+        return "ERROR_SERVER_FAILURE"
+    except Exception as e:
+        print(f"    An unexpected server error occured: {e}")
+        return "ERROR_SERVER_FAILURE"
 
 @client.request
 def ping():
